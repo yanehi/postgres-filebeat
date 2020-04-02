@@ -1,0 +1,21 @@
+{{ if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "postgres-filebeat.clusterRoleName" . }} #  name: filebeat-cluster-role
+  labels:
+    app.kubernetes.io/name: {{ template "postgres-filebeat.name" . }}
+    helm.sh/chart: {{ template "postgres-filebeat.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+# all verbs allowed for custom operator resources
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - list
+  - watch

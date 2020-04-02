@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postgres-filebeat.fullname" . }}
+  namespace: elastic-stack
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "postgres-filebeat.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+          {{- include "postgres-filebeat.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_PASSWORD
+          value: postgres
+        image: "{{ .Values.image.repository }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: {{ .Chart.Name }}
+        ports:
+        - name: postgres-port
+          containerPort: 5432
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        stdin: true
+        tty: true
+        volumeMounts:
+        - mountPath: /var/log/postgresql
+          name: pg-log
+      - args:
+        - -e
+        - -E
+        - http.enabled=true
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: docker.elastic.co/beats/filebeat:7.6.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - '#!/usr/bin/env bash -ecurl --fail 127.0.0.1:5066'
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: filebeat-logshipper
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - '#!/usr/bin/env bash -efilebeat test output'
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: "1"
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        volumeMounts:
+        - mountPath: /var/log/postgresql
+          name: pg-log
+          readOnly: true
+        - mountPath: /usr/share/filebeat/filebeat.yml
+          name: filebeat-config
+          readOnly: true
+          subPath: filebeat.yml
+      restartPolicy: Always
+      serviceAccountName:  {{ include "postgres-filebeat.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: pg-log
+        persistentVolumeClaim:
+          claimName: pg-log
+      - configMap:
+          defaultMode: 384
+          name: filebeat-config
+          optional: false
+        name: filebeat-config
+      {{- end }}

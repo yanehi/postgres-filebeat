@@ -1,0 +1,23 @@
+apiVersion: v2
+
+name: postgres-filebeat
+
+home: https://github.com/yanehi/postgres-filebeat
+
+description: A Helm chart for PostgreSQL Log shipping with Filebeat to Elasticsearch.
+
+keywords:
+- postgres
+- filebeat
+- elk-stack
+
+type: application
+
+version: 0.1
+
+appVersion: 1.0.0
+
+maintainers:
+- name: Yannic Nevado Hidalgo
+sources:
+- https://github.com/yanehi/postgres-filebeat
